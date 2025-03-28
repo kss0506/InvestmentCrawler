@@ -6,7 +6,12 @@ import logging
 import re
 import asyncio
 import aiohttp
+import io
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+import numpy as np
 from datetime import datetime
+from matplotlib.dates import DateFormatter, MonthLocator
 
 # 로깅 설정
 logging.basicConfig(
@@ -155,9 +160,132 @@ async def send_html_content(ticker, html_content):
         return False
 
 
+async def send_photo(photo_bytes, caption=None, parse_mode=None):
+    """
+    텔레그램으로 이미지 전송
+    
+    Args:
+        photo_bytes (bytes): 이미지 바이트 데이터
+        caption (str, optional): 이미지 설명
+        parse_mode (str, optional): 캡션 파싱 모드 ('HTML', 'Markdown', None)
+        
+    Returns:
+        bool: 성공 여부
+    """
+    if not BOT_TOKEN or not CHAT_ID:
+        logger.error("텔레그램 봇 토큰 또는 채팅 ID가 설정되지 않았습니다.")
+        return False
+    
+    # 텔레그램 API URL
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto"
+    
+    # 요청 데이터 - 챗_ID 형변환 (숫자값으로 간주)
+    try:
+        chat_id = int(CHAT_ID)
+    except ValueError:
+        # 문자열로 그대로 사용 (채널명, 사용자명 등)
+        chat_id = CHAT_ID
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            form = aiohttp.FormData()
+            form.add_field('chat_id', str(chat_id))
+            form.add_field('photo', photo_bytes, filename='chart.png', content_type='image/png')
+            
+            if caption:
+                form.add_field('caption', caption)
+            
+            if parse_mode:
+                form.add_field('parse_mode', parse_mode)
+            
+            async with session.post(url, data=form) as response:
+                if response.status == 200:
+                    result = await response.json()
+                    if result.get("ok"):
+                        logger.info(f"텔레그램 이미지 전송 성공 (채팅 ID: {CHAT_ID})")
+                        return True
+                    else:
+                        logger.error(f"텔레그램 API 오류: {result.get('description')}")
+                else:
+                    # 응답 내용 확인하여 로깅
+                    try:
+                        error_content = await response.text()
+                        logger.error(f"텔레그램 API 응답 오류. 상태 코드: {response.status}, 내용: {error_content}")
+                    except:
+                        logger.error(f"텔레그램 API 응답 오류. 상태 코드: {response.status}")
+                return False
+    except Exception as e:
+        logger.error(f"텔레그램 이미지 전송 중 예외 발생: {e}")
+        return False
+
+
+def create_stock_chart(ticker, data):
+    """
+    주식/ETF 차트 이미지 생성
+    
+    Args:
+        ticker (str): 티커 심볼
+        data (dict): 차트 데이터
+        
+    Returns:
+        bytes: 이미지 바이트 데이터
+    """
+    try:
+        # 데이터 준비
+        dates = [datetime.strptime(d, '%Y-%m-%d') for d in data.get('dates', [])]
+        prices = data.get('prices', [])
+        ma50 = data.get('ma50', [])
+        ma200 = data.get('ma200', [])
+        
+        # 차트 크기 설정
+        plt.figure(figsize=(10, 6))
+        plt.style.use('dark_background')  # 다크모드 테마
+        
+        # 가격 그래프
+        plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='가격')
+        
+        # 이동평균선
+        valid_ma50 = [(d, p) for d, p in zip(dates, ma50) if p is not None]
+        if valid_ma50:
+            ma50_dates, ma50_values = zip(*valid_ma50)
+            plt.plot(ma50_dates, ma50_values, color='#FFD700', linewidth=1.5, label='50일 이동평균')
+        
+        valid_ma200 = [(d, p) for d, p in zip(dates, ma200) if p is not None]
+        if valid_ma200:
+            ma200_dates, ma200_values = zip(*valid_ma200)
+            plt.plot(ma200_dates, ma200_values, color='#FF4500', linewidth=1.5, label='200일 이동평균')
+        
+        # 그래프 스타일 설정
+        plt.grid(True, alpha=0.3)
+        plt.title(f"{ticker} 주가 차트 (1년)", fontsize=16, pad=10)
+        plt.ylabel("가격 (USD)", fontsize=12)
+        
+        # X축 날짜 포맷 설정
+        plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
+        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
+        plt.xticks(rotation=45)
+        
+        # 범례 표시
+        plt.legend()
+        plt.tight_layout()
+        
+        # 이미지를 바이트로 변환
+        img_buf = io.BytesIO()
+        plt.savefig(img_buf, format='png', dpi=100)
+        img_buf.seek(0)
+        img_bytes = img_buf.getvalue()
+        plt.close()
+        
+        return img_bytes
+    except Exception as e:
+        logger.error(f"차트 이미지 생성 실패: {e}")
+        plt.close()  # 에러 발생해도 figure 닫기
+        return None
+
+
 async def send_chart_analysis(ticker, data):
     """
-    차트 분석 결과를 텔레그램으로 전송
+    차트 분석 결과와 이미지를 텔레그램으로 전송
     
     Args:
         ticker (str): 티커 심볼
@@ -192,9 +320,20 @@ async def send_chart_analysis(ticker, data):
             else:
                 message += "📉 현재 가격이 200일 이동평균 +10% <b>아래</b>에 있습니다.\n"
         
-        return await send_message(message)
+        # 텍스트 메시지 먼저 전송
+        text_success = await send_message(message)
+        
+        # 차트 이미지 생성 및 전송
+        chart_bytes = create_stock_chart(ticker, data)
+        if chart_bytes:
+            # 차트 설명 캡션
+            caption = f"{ticker} 1년 주가 차트"
+            image_success = await send_photo(chart_bytes, caption)
+            return text_success and image_success
+        
+        return text_success
     except Exception as e:
-        logger.error(f"차트 분석 메시지 전송 실패: {e}")
+        logger.error(f"차트 분석 메시지 및 이미지 전송 실패: {e}")
         return False
 
 

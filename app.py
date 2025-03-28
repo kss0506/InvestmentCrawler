@@ -3,14 +3,17 @@ Flask web application for ETF Daily Briefing Scraper
 """
 import os
 import logging
+import io
+import base64
 from datetime import datetime
 import glob
 import json
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, Response
 
 # Import stock data module
 from stock_data import get_stock_data, get_stock_info
+from telegram_sender import create_stock_chart
 
 # Setup Flask app
 app = Flask(__name__)
@@ -232,6 +235,75 @@ def chart_view(ticker):
         ticker_type=ticker_type,
         ticker_description=ticker_description
     )
+
+
+@app.route('/chart-image/<ticker>')
+def chart_image(ticker):
+    """
+    Generate and serve a chart image for a ticker
+    
+    Args:
+        ticker (str): Ticker symbol
+        
+    Returns:
+        Response: PNG image
+    """
+    period = request.args.get('period', '1y')
+    data = get_stock_data(ticker, period=period)
+    
+    if not data:
+        return "Chart data not available", 404
+        
+    # 차트 이미지 생성
+    chart_bytes = create_stock_chart(ticker, data)
+    
+    if not chart_bytes:
+        return "Chart generation failed", 500
+        
+    # PNG 이미지로 응답
+    return Response(chart_bytes, mimetype='image/png')
+
+
+@app.route('/chart-data-image/<ticker>')
+def chart_data_image(ticker):
+    """
+    API endpoint to get chart data and base64 encoded image
+    
+    Args:
+        ticker (str): Ticker symbol
+        
+    Returns:
+        json: Chart data and base64 encoded image
+    """
+    period = request.args.get('period', '1y')
+    data = get_stock_data(ticker, period=period)
+    
+    if not data:
+        return jsonify({
+            'success': False,
+            'ticker': ticker,
+            'error': f"Failed to get data for {ticker}"
+        }), 404
+    
+    # 차트 이미지 생성
+    chart_bytes = create_stock_chart(ticker, data)
+    
+    if not chart_bytes:
+        return jsonify({
+            'success': False,
+            'ticker': ticker,
+            'error': "Chart generation failed"
+        }), 500
+    
+    # Base64로 인코딩
+    encoded_image = base64.b64encode(chart_bytes).decode('utf-8')
+    
+    return jsonify({
+        'success': True,
+        'ticker': ticker,
+        'data': data,
+        'chart_image': encoded_image
+    })
 
 
 @app.errorhandler(404)
