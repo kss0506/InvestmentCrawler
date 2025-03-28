@@ -377,43 +377,56 @@ def create_stock_chart(ticker, data):
         ma200 = data.get('ma200', [])
         ma200_plus10 = data.get('ma200_plus10', [])
         
-        # Set chart size
+        # 차트 크기 설정
         plt.figure(figsize=(10, 6))
-        plt.style.use('dark_background')  # Dark mode theme
+        plt.style.use('dark_background')  # 다크 모드 테마
         
-        # Price graph
-        plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='Price')
+        # 가격 그래프
+        plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='주가')
         
-        # Moving averages
+        # 이동평균선
         valid_ma50 = [(d, p) for d, p in zip(dates, ma50) if p is not None]
         if valid_ma50:
             ma50_dates, ma50_values = zip(*valid_ma50)
-            plt.plot(ma50_dates, ma50_values, color='#FFD700', linewidth=1.5, label='50-day MA')
+            plt.plot(ma50_dates, ma50_values, color='#FFD700', linewidth=1.5, label='50일 이동평균')
         
         valid_ma200 = [(d, p) for d, p in zip(dates, ma200) if p is not None]
         if valid_ma200:
             ma200_dates, ma200_values = zip(*valid_ma200)
-            plt.plot(ma200_dates, ma200_values, color='#FF4500', linewidth=1.5, label='200-day MA')
+            plt.plot(ma200_dates, ma200_values, color='#FF4500', linewidth=1.5, label='200일 이동평균')
             
-        # Add 200-day MA + 10% line
+        # 200일 이동평균 +10% 라인 추가
         valid_ma200_plus10 = [(d, p) for d, p in zip(dates, ma200_plus10) if p is not None]
         if valid_ma200_plus10:
             ma200_plus10_dates, ma200_plus10_values = zip(*valid_ma200_plus10)
-            plt.plot(ma200_plus10_dates, ma200_plus10_values, color='#FF69B4', linewidth=1.5, linestyle='--', label='200-day MA +10%')
+            plt.plot(ma200_plus10_dates, ma200_plus10_values, color='#FF69B4', linewidth=1.5, linestyle='--', label='200일 이동평균 +10%')
         
-        # Graph style settings
+        # 그래프 스타일 설정
         plt.grid(True, alpha=0.3)
-        plt.title(f"{ticker} Price Chart (1 Year)", fontsize=16, pad=10)
-        plt.ylabel("Price (USD)", fontsize=12)
+        plt.title(f"{ticker} 주가 차트 (1년)", fontsize=16, pad=10)
+        plt.ylabel("가격 (USD)", fontsize=12)
         
-        # X-axis date format
+        # X축 날짜 형식
         plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m'))
-        plt.xticks(rotation=45)
+        plt.xticks(rotation=45, fontsize=10, color='white')
+        plt.yticks(fontsize=10, color='white')
         
-        # Show legend
-        plt.legend()
-        plt.tight_layout()
+        # 축 가시성 향상
+        plt.gca().spines['left'].set_visible(True)
+        plt.gca().spines['left'].set_color('gray')
+        plt.gca().spines['bottom'].set_visible(True)
+        plt.gca().spines['bottom'].set_color('gray')
+        
+        # 눈금 표시 확실하게
+        plt.gca().tick_params(axis='x', colors='gray', length=5)
+        plt.gca().tick_params(axis='y', colors='gray', length=5)
+        
+        # 범례 가시성 향상
+        plt.legend(frameon=True, framealpha=0.8, fontsize=10)
+        
+        # 차트 주변 여백 확보
+        plt.tight_layout(pad=2.0)
         
         # 이미지를 바이트로 변환
         img_buf = io.BytesIO()
@@ -431,49 +444,49 @@ def create_stock_chart(ticker, data):
 
 async def send_chart_analysis(ticker, data):
     """
-    Send chart analysis results and image to Telegram
+    차트 분석 결과와 이미지를 텔레그램으로 전송
     
     Args:
-        ticker (str): Ticker symbol
-        data (dict): Chart data
+        ticker (str): 티커 심볼
+        data (dict): 차트 데이터
         
     Returns:
-        bool: Success status
+        bool: 성공 여부
     """
     try:
-        # Get current price and moving average information
+        # 현재 가격과 이동평균선 정보
         current_price = data.get('current_price', 0)
         ma200 = data.get('current_ma200')
         ma200_plus10 = data.get('current_ma200_plus10')
         
-        # Create message
-        message = f"📈 <b>{ticker} Chart Analysis</b>\n\n"
-        message += f"Current Price: <b>${current_price:.2f}</b>\n"
+        # 메시지 생성
+        message = f"📈 <b>{ticker} 차트 분석</b>\n\n"
+        message += f"현재 가격: <b>${current_price:.2f}</b>\n"
         
         if ma200:
-            message += f"200-day MA: <b>${ma200:.2f}</b>\n"
-            # Indicate if price is above/below MA200
+            message += f"200일 이동평균: <b>${ma200:.2f}</b>\n"
+            # 가격이 MA200 위/아래 표시
             if data.get('is_above_ma200', False):
-                message += "✅ Price is <b>ABOVE</b> the 200-day moving average.\n"
+                message += "✅ 현재 가격이 200일 이동평균선 <b>위</b>에 있습니다.\n"
             else:
-                message += "⚠️ Price is <b>BELOW</b> the 200-day moving average.\n"
+                message += "⚠️ 현재 가격이 200일 이동평균선 <b>아래</b>에 있습니다.\n"
         
         if ma200_plus10:
-            message += f"200-day MA +10%: <b>${ma200_plus10:.2f}</b>\n"
-            # Indicate if price is above/below MA200+10%
+            message += f"200일 이동평균 +10%: <b>${ma200_plus10:.2f}</b>\n"
+            # 가격이 MA200+10% 위/아래 표시
             if data.get('is_above_ma200_plus10', False):
-                message += "🔥 Price is <b>ABOVE</b> the 200-day MA +10% level.\n"
+                message += "🔥 현재 가격이 200일 이동평균 +10% <b>위</b>에 있습니다.\n"
             else:
-                message += "📉 Price is <b>BELOW</b> the 200-day MA +10% level.\n"
+                message += "📉 현재 가격이 200일 이동평균 +10% <b>아래</b>에 있습니다.\n"
         
-        # Send text message first
+        # 텍스트 메시지 먼저 전송
         text_success = await send_message(message)
         
-        # Create and send chart image
+        # 차트 이미지 생성 및 전송
         chart_bytes = create_stock_chart(ticker, data)
         if chart_bytes:
-            # Chart caption
-            caption = f"{ticker} 1-Year Price Chart"
+            # 차트 설명 캡션
+            caption = f"{ticker} 1년 주가 차트"
             image_success = await send_photo(chart_bytes, caption)
             return text_success and image_success
         
