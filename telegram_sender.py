@@ -432,22 +432,45 @@ def create_text_image(ticker, content):
         bytes: 이미지 바이트 데이터
     """
     try:
-        # HTML 태그 처리
-        cleaned_content = html.unescape(content)
-        cleaned_content = re.sub(r'<br\s*/?>', '\n', cleaned_content, flags=re.IGNORECASE)
-        cleaned_content = re.sub(r'<p>', '\n', cleaned_content, flags=re.IGNORECASE)
-        cleaned_content = re.sub(r'</p>', '\n', cleaned_content, flags=re.IGNORECASE)
+        # BeautifulSoup으로 HTML 처리 및 링크 추출
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(content, 'html.parser')
         
-        # 남은 HTML 태그 제거
-        cleaned_content = re.sub(r'<[^>]*>', '', cleaned_content)
+        # 브리핑 본문의 링크만 추출 (주요 내용 영역)
+        links = []
         
-        # 링크 추출 (나중에 별도 전송용)
-        links = re.findall(r'https?://[^\s]+', cleaned_content)
+        # 주로 브리핑 본문이 포함된 영역 찾기 - 'content', 'briefing', 'article' 등의 클래스 이름 시도
+        content_section = None
+        for class_name in ['etf-content', 'etf-briefing', 'daily-briefing', 'article', 'content']:
+            found = soup.find(class_=lambda x: x and class_name in x.lower())
+            if found:
+                content_section = found
+                break
         
-        # 링크를 텍스트에서 제거하고 "원문 링크"로 대체
-        if links:
-            for link in links:
-                cleaned_content = cleaned_content.replace(link, "[원문 링크]")
+        # 본문 영역을 찾지 못했다면 전체 문서에서 링크 찾기
+        target = content_section if content_section else soup
+        
+        # 링크 추출 및 처리
+        for a in target.find_all('a', href=True):
+            href = a['href']
+            # 상대 경로 링크는 건너뛰기
+            if href.startswith('/') or href.startswith('#'):
+                continue
+                
+            # 실제 URL만 포함 (javascript 링크 제외)
+            if href.startswith('http'):
+                link_text = a.get_text(strip=True) or href
+                # 브리핑 원문 링크 정보 저장
+                links.append(f"<a href='{href}'>{link_text}</a>")
+                
+                # 링크는 [원문 보기]로 대체 (텍스트에서는 제거)
+                a.replace_with("[원문 보기]")
+            
+        # HTML에서 텍스트 추출
+        cleaned_content = soup.get_text()
+        
+        # HTML entity 처리
+        cleaned_content = html.unescape(cleaned_content)
         
         # 여러 줄 개행 정리
         cleaned_content = re.sub(r'\n\s*\n', '\n\n', cleaned_content)
@@ -458,10 +481,11 @@ def create_text_image(ticker, content):
         line_count = len(cleaned_content.split('\n'))
         height = max(500, 100 + line_count * 25)  # 기본 높이 500px, 줄 수에 따라 증가
         
-        # 배경색 - 더 부드러운 어두운 테마
-        background_color = (30, 30, 45)  # 어두운 남색
-        text_color = (240, 240, 245)  # 조금 더 부드러운 흰색
-        header_color = (130, 180, 255)  # 밝은 파란색
+        # 배경색 - 진한 남색 (예시 이미지와 유사한 색상)
+        background_color = (20, 24, 40)  # 어두운 남색
+        text_color = (240, 240, 245)  # 흰색에 가까운 색
+        header_color = (66, 133, 244)  # 파란색 
+        border_color = (100, 140, 240)  # 테두리 색상
         
         # 이미지 생성
         image = Image.new('RGB', (width, height), color=background_color)
@@ -509,14 +533,30 @@ def create_text_image(ticker, content):
             header_font = ImageFont.load_default()
             content_font = ImageFont.load_default()
         
-        # 제목 그리기
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        title = f"{ticker} 데일리 브리핑 ({current_date})"
-        draw.text((30, 30), title, font=header_font, fill=header_color)
+        # 티커 심볼 크게 표시 (좌상단)
+        draw.text((30, 25), ticker, font=header_font, fill=header_color)
         
-        # 테두리 그리기 (전체 이미지 주변)
+        # 날짜 정보 표시 (우측 정렬)
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        date_text = f"데일리 브리핑 ({current_date})"
+        
+        # 날짜 텍스트 너비 계산 (우측 정렬 위해)
+        try:
+            date_width = draw.textlength(date_text, font=content_font)
+            date_x = width - date_width - 40  # 오른쪽 여백
+        except:
+            # textlength 지원하지 않을 경우 근사값
+            date_x = width - 300
+            
+        draw.text((date_x, 30), date_text, font=content_font, fill=header_color)
+        
+        # 테두리 그리기 (전체 이미지 주변) - for 루프로 픽셀별로 그리기
         border_width = 3
-        draw.rectangle([(0, 0), (width-1, height-1)], outline=header_color, width=border_width)
+        for i in range(border_width):
+            draw.rectangle(
+                [(i, i), (width-1-i, height-1-i)],
+                outline=border_color
+            )
         
         # 제목 아래 구분선 그리기
         draw.line([(30, 80), (width-30, 80)], fill=header_color, width=2)
@@ -585,9 +625,9 @@ async def send_briefing_as_image(ticker, html_content):
         
         # 링크가 있으면 별도 메시지로 전송
         if links and image_success:
-            links_text = f"📎 <b>{ticker} 관련 링크</b>\n\n"
+            links_text = f"🔗 <b>{ticker} 원문 링크</b>\n\n"
             for i, link in enumerate(links[:5]):  # 최대 5개까지만 표시
-                links_text += f"{i+1}. {link}\n"
+                links_text += f"{link}\n"
                 
             await send_message(links_text)
             
