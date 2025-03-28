@@ -51,10 +51,10 @@ async def test_ticker(ticker):
                     news_content = result[news_start:].strip()
                     result = main_content + "\n\n관련 뉴스:\n\n" + news_content
             
-            # Format news headlines better
-            result = result.replace("팔로 알토 네트웍스", "\n팔로 알토 네트웍스")
-            result = result.replace("팔란티어 테크놀로지스", "\n팔란티어 테크놀로지스")  
-            result = result.replace("오라클", "\n오라클")
+            # Format news headlines better with section divider and newlines
+            result = result.replace("팔로 알토 네트웍스", "\n\n=== 팔로 알토 네트웍스")
+            result = result.replace("팔란티어 테크놀로지스", "\n\n=== 팔란티어 테크놀로지스")  
+            result = result.replace("오라클", "\n\n=== 오라클")
             
             # Add spaces between ticker symbol, price, and change percentage
             result = result.replace(" (PANW)$", " (PANW) $")
