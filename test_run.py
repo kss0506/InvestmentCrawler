@@ -1,9 +1,11 @@
 import asyncio
-import os
-from main import run_once, setup_logging
+import logging
+from main import setup_logging, run_once
 
-if __name__ == '__main__':
-    # Run in single mode to execute just once
-    os.environ["RUN_MODE"] = "single"
+async def main():
+    """Test run with all tickers"""
     logger = setup_logging()
-    asyncio.run(run_once(logger=logger))
+    await run_once(tickers=["IGV", "SOXL", "BRKU", "BLK", "IVZ"], logger=logger)
+
+if __name__ == "__main__":
+    asyncio.run(main())
