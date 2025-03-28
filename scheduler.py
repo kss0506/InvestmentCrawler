@@ -10,6 +10,8 @@ import schedule
 
 from config import SCHEDULE_HOUR, SCHEDULE_MINUTE, TICKERS
 from scraper import ETFScraper
+from telegram_sender import send_message, send_html_content, send_chart_analysis
+from stock_data import get_stock_data
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,40 @@ class ETFScraperScheduler:
                     
                 logger.info(f"Completed scraping task for {len(self.tickers)} tickers")
                 
+                # 텔레그램으로 전송
+                try:
+                    logger.info("텔레그램으로 메시지 전송 시작")
+                    today_date = datetime.now().strftime("%Y년 %m월 %d일")
+                    
+                    # 헤더 메시지 전송
+                    header_message = f"📊 <b>ETF 데일리 브리핑 ({today_date})</b>\n\n"
+                    await send_message(header_message)
+                    
+                    # 각 ETF/주식 브리핑 전송
+                    for result in results:
+                        # 티커 추출 (결과의 첫 부분은 항상 "TICKER:"로 시작)
+                        ticker = result.split(':')[0].strip()
+                        
+                        # HTML 콘텐츠 가져오기 (스크래핑된 결과)
+                        html_content = result.replace(f"{ticker}:", "")
+                        await send_html_content(ticker, html_content)
+                        
+                        # 차트 분석 데이터 가져오기 및 전송
+                        try:
+                            chart_data = get_stock_data(ticker)
+                            if chart_data:
+                                await send_chart_analysis(ticker, chart_data)
+                        except Exception as e:
+                            logger.error(f"차트 데이터 전송 실패 ({ticker}): {e}")
+                        
+                        # 각 티커 사이에 약간의 시간 간격 추가
+                        await asyncio.sleep(1)
+                        
+                    logger.info("텔레그램 메시지 전송 완료")
+                    
+                except Exception as e:
+                    logger.error(f"텔레그램 메시지 전송 중 오류 발생: {e}")
+                
             except asyncio.TimeoutError:
                 logger.error("Overall scraping operation timed out in scheduled run")
                 # Generate fallback results for all tickers
@@ -72,6 +108,30 @@ class ETFScraperScheduler:
                     print("-"*50)
                 
                 logger.info("Printed fallback results due to timeout")
+                
+                # 텔레그램으로 오류 알림 전송
+                try:
+                    logger.info("텔레그램으로 타임아웃 알림 전송")
+                    today_date = datetime.now().strftime("%Y년 %m월 %d일")
+                    
+                    # 오류 메시지 전송
+                    error_message = (
+                        f"⚠️ <b>ETF 데일리 브리핑 오류 ({today_date})</b>\n\n"
+                        f"스크래핑 작업 중 타임아웃이 발생했습니다. "
+                        f"일부 ETF/주식 정보를 가져오지 못했을 수 있습니다.\n\n"
+                        f"영향받은 티커: {', '.join(self.tickers)}"
+                    )
+                    await send_message(error_message)
+                    
+                    # 각 티커에 대한 대체 메시지 전송
+                    for result in results:
+                        ticker = result.split(':')[0].strip()
+                        await send_message(result)
+                        
+                    logger.info("텔레그램 타임아웃 알림 전송 완료")
+                    
+                except Exception as e:
+                    logger.error(f"텔레그램 타임아웃 알림 전송 중 오류 발생: {e}")
             
         except Exception as e:
             logger.error(f"Error running scheduled task: {e}")

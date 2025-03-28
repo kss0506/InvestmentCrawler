@@ -14,6 +14,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
+from chromedriver_py import binary_path  # Use chromedriver-py for binary path
 
 from config import BROWSER_USER_AGENT
 
@@ -32,14 +33,15 @@ class ETFScraper:
         Setup Selenium WebDriver with Chrome options
         """
         options = Options()
-        options.binary_location = "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium"
+        # Use default binary location, let selenium find it
         options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--lang=ko-KR")
         options.add_argument(f"user-agent={BROWSER_USER_AGENT}")
         
-        service = Service(executable_path="/nix/store/3qnxr5x6gw3k9a9i7d0akz0m6bksbwff-chromedriver-125.0.6422.141/bin/chromedriver")
+        # Use binary_path from chromedriver_py
+        service = Service(executable_path=binary_path)
         
         try:
             self.driver = webdriver.Chrome(service=service, options=options)
