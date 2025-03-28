@@ -84,8 +84,8 @@ async def run_once(tickers=None, logger=None):
                     # HTML 콘텐츠 가져오기 (스크래핑된 결과)
                     html_content = result.replace(f"{ticker}:", "")
                     
-                    # 브리핑 내용을 이미지로 변환하여 전송
-                    await send_briefing_as_image(ticker, html_content)
+                    # 브리핑 내용을 텍스트로 전송
+                    await send_html_content(ticker, html_content)
                     
                     # 차트 분석 데이터 가져오기 및 전송
                     try:
