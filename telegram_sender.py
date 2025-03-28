@@ -382,11 +382,9 @@ def create_stock_chart(ticker, data):
         plt.style.use('dark_background')  # 다크 모드 테마
         
         # 가격 그래프
-        # Set figure and axes background color
-    plt.figure(facecolor='#141824')
-    plt.gca().set_facecolor('#141824')
-
-    plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='Price')
+        plt.figure(facecolor='#141824')
+        plt.gca().set_facecolor('#141824')
+        plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='Price')
         
         # Moving averages
         valid_ma50 = [(d, p) for d, p in zip(dates, ma50) if p is not None]
