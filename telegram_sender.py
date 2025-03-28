@@ -382,31 +382,29 @@ def create_stock_chart(ticker, data):
         plt.style.use('dark_background')  # 다크 모드 테마
         
         # 가격 그래프
-        plt.figure(facecolor='#141824')
-        plt.gca().set_facecolor('#141824')
-        plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='Price')
+        plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='주가')
         
-        # Moving averages
+        # 이동평균선
         valid_ma50 = [(d, p) for d, p in zip(dates, ma50) if p is not None]
         if valid_ma50:
             ma50_dates, ma50_values = zip(*valid_ma50)
-            plt.plot(ma50_dates, ma50_values, color='#FFD700', linewidth=1.5, label='50-day MA')
+            plt.plot(ma50_dates, ma50_values, color='#FFD700', linewidth=1.5, label='50일 이동평균')
         
         valid_ma200 = [(d, p) for d, p in zip(dates, ma200) if p is not None]
         if valid_ma200:
             ma200_dates, ma200_values = zip(*valid_ma200)
-            plt.plot(ma200_dates, ma200_values, color='#FF4500', linewidth=1.5, label='200-day MA')
+            plt.plot(ma200_dates, ma200_values, color='#FF4500', linewidth=1.5, label='200일 이동평균')
             
-        # 200-day MA +10% line
+        # 200일 이동평균 +10% 라인 추가
         valid_ma200_plus10 = [(d, p) for d, p in zip(dates, ma200_plus10) if p is not None]
         if valid_ma200_plus10:
             ma200_plus10_dates, ma200_plus10_values = zip(*valid_ma200_plus10)
-            plt.plot(ma200_plus10_dates, ma200_plus10_values, color='#FF69B4', linewidth=1.5, linestyle='--', label='200-day MA +10%')
+            plt.plot(ma200_plus10_dates, ma200_plus10_values, color='#FF69B4', linewidth=1.5, linestyle='--', label='200일 이동평균 +10%')
         
-        # Graph style settings
+        # 그래프 스타일 설정
         plt.grid(True, alpha=0.3)
-        plt.title(f"{ticker} Price Chart (1Y)", fontsize=16, pad=10, color='white')
-        plt.ylabel("Price (USD)", fontsize=12, color='white')
+        plt.title(f"{ticker} 주가 차트 (1년)", fontsize=16, pad=10)
+        plt.ylabel("가격 (USD)", fontsize=12)
         
         # X축 날짜 형식
         plt.gca().xaxis.set_major_locator(mdates.MonthLocator())
