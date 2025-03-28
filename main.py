@@ -31,6 +31,12 @@ def setup_logging():
     logger.info("Logging configured successfully")
     return logger
 
+async def run_once(tickers=None, logger=None):
+    """Run scraper once for testing"""
+    if logger is None:
+        logger = setup_logging()
+    return await run_scraper(tickers, logger)
+
 async def run_scraper(tickers=None, logger=None):
     """Run the scraper for specified tickers"""
     if logger is None:
