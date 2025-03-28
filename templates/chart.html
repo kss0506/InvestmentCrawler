@@ -1,0 +1,236 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ ticker }} - 차트 분석{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">
+            {{ ticker }} - 차트 분석
+            <small class="text-muted">{{ ticker_description }}</small>
+        </h1>
+        
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">주가 차트 ({{ period }})</h5>
+                <div class="btn-group" role="group">
+                    <a href="/chart/{{ ticker }}?period=1mo" class="btn btn-sm btn-outline-secondary">1개월</a>
+                    <a href="/chart/{{ ticker }}?period=3mo" class="btn btn-sm btn-outline-secondary">3개월</a>
+                    <a href="/chart/{{ ticker }}?period=6mo" class="btn btn-sm btn-outline-secondary">6개월</a>
+                    <a href="/chart/{{ ticker }}?period=1y" class="btn btn-sm btn-outline-secondary">1년</a>
+                    <a href="/chart/{{ ticker }}?period=2y" class="btn btn-sm btn-outline-secondary">2년</a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container" style="position: relative; height:400px; width:100%">
+                    <canvas id="priceChart"></canvas>
+                </div>
+                <div class="alert alert-info mt-3" id="loading">데이터를 불러오는 중입니다...</div>
+                <div id="chartInfo" class="row mt-3" style="display: none;">
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">현재 가격</h5>
+                                <p class="card-text fs-3" id="currentPrice">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">200일 이동평균선</h5>
+                                <p class="card-text fs-3" id="ma200">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body text-center">
+                                <h5 class="card-title">200일선 +10%</h5>
+                                <p class="card-text fs-3" id="ma200Plus10">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <div id="aboveMA200" class="alert" style="display: none;"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="aboveMA200Plus10" class="alert" style="display: none;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="d-flex justify-content-between mb-4">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> 뒤로 가기
+            </a>
+            
+            <a href="/ticker/{{ ticker }}/{{ date_str if date_str else '20250328' }}" class="btn btn-primary">
+                데일리 브리핑 보기 <i class="bi bi-file-text"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ticker = '{{ ticker }}';
+    const period = '{{ period }}';
+    
+    // Fetch chart data from API
+    fetch(`/api/chart/${ticker}?period=${period}`)
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                // Hide loading message
+                document.getElementById('loading').style.display = 'none';
+                
+                // Show chart info
+                document.getElementById('chartInfo').style.display = 'flex';
+                
+                // Update metrics
+                document.getElementById('currentPrice').textContent = 
+                    result.data.current_price.toLocaleString('ko-KR', {maximumFractionDigits: 2});
+                
+                document.getElementById('ma200').textContent = 
+                    result.data.current_ma200.toLocaleString('ko-KR', {maximumFractionDigits: 2});
+                
+                document.getElementById('ma200Plus10').textContent = 
+                    result.data.current_ma200_plus10.toLocaleString('ko-KR', {maximumFractionDigits: 2});
+                
+                // Setup MA200 status
+                const aboveMA200 = document.getElementById('aboveMA200');
+                if (result.data.is_above_ma200) {
+                    aboveMA200.textContent = "현재 가격이 200일 이동평균선 위에 있습니다.";
+                    aboveMA200.classList.add('alert-success');
+                } else {
+                    aboveMA200.textContent = "현재 가격이 200일 이동평균선 아래에 있습니다.";
+                    aboveMA200.classList.add('alert-warning');
+                }
+                aboveMA200.style.display = 'block';
+                
+                // Setup MA200+10% status
+                const aboveMA200Plus10 = document.getElementById('aboveMA200Plus10');
+                if (result.data.is_above_ma200_plus10) {
+                    aboveMA200Plus10.textContent = "현재 가격이 200일 이동평균선 +10% 위에 있습니다.";
+                    aboveMA200Plus10.classList.add('alert-success');
+                } else {
+                    aboveMA200Plus10.textContent = "현재 가격이 200일 이동평균선 +10% 아래에 있습니다.";
+                    aboveMA200Plus10.classList.add('alert-warning');
+                }
+                aboveMA200Plus10.style.display = 'block';
+                
+                // Render chart
+                renderChart(result.data);
+            } else {
+                // Show error
+                document.getElementById('loading').classList.remove('alert-info');
+                document.getElementById('loading').classList.add('alert-danger');
+                document.getElementById('loading').textContent = '데이터를 불러오는데 실패했습니다: ' + (result.error || '알 수 없는 오류');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching chart data:', error);
+            document.getElementById('loading').classList.remove('alert-info');
+            document.getElementById('loading').classList.add('alert-danger');
+            document.getElementById('loading').textContent = '데이터를 불러오는데 실패했습니다: ' + error.message;
+        });
+});
+
+function renderChart(data) {
+    // Setup chart data
+    const chartData = {
+        labels: data.dates,
+        datasets: [
+            {
+                label: '가격',
+                data: data.prices,
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                pointRadius: 0,
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+            },
+            {
+                label: '50일 이동평균선',
+                data: data.ma50,
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                pointRadius: 0,
+                borderWidth: 2,
+                borderDash: [5, 5],
+                fill: false
+            },
+            {
+                label: '200일 이동평균선',
+                data: data.ma200,
+                borderColor: 'rgb(153, 102, 255)',
+                backgroundColor: 'rgba(153, 102, 255, 0.1)',
+                pointRadius: 0,
+                borderWidth: 2,
+                fill: false
+            },
+            {
+                label: '200일 +10%',
+                data: data.ma200_plus10,
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                pointRadius: 0,
+                borderWidth: 2,
+                borderDash: [10, 5],
+                fill: false
+            }
+        ]
+    };
+
+    // Chart configuration
+    const config = {
+        type: 'line',
+        data: chartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: '{{ ticker }} 주가 차트'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '날짜'
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: '가격'
+                    }
+                }
+            }
+        }
+    };
+
+    // Render chart
+    new Chart(
+        document.getElementById('priceChart'),
+        config
+    );
+}
+</script>
+{% endblock %}

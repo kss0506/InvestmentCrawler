@@ -31,45 +31,88 @@
 </div>
 
 <div class="row mt-4">
+    <div class="col-md-12 mb-4">
+        <div class="card border-primary">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> 새로운 차트 기능</h5>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4>주가 분석 차트</h4>
+                        <p>모든 티커에 대한 차트 분석 기능이 추가되었습니다. 다음과 같은 기능을 사용할 수 있습니다:</p>
+                        <ul>
+                            <li>주가 변동 추이 확인</li>
+                            <li>50일 및 200일 이동평균선 분석</li>
+                            <li>다양한 기간별 차트 보기 (1개월, 3개월, 6개월, 1년, 2년)</li>
+                            <li>200일 이동평균선 +10% 라인 확인</li>
+                        </ul>
+                        <p>데일리 브리핑과 함께 차트 분석을 통해 더 정확한 투자 결정을 내려보세요!</p>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <i class="bi bi-bar-chart-line" style="font-size: 6rem; color: var(--bs-primary);"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">ETF</h5>
+                <h5 class="mb-0"><i class="bi bi-database"></i> ETF</h5>
             </div>
             <div class="card-body">
-                <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        IGV
-                        <span class="text-muted">iShares Expanded Tech-Software Sector ETF</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        SOXL
-                        <span class="text-muted">Direxion Daily Semiconductor Bull 3X Shares</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        BRKU
-                        <span class="text-muted">Direxion Semiconductor Bull 2X Shares</span>
-                    </li>
-                </ul>
+                <div class="list-group">
+                    <a href="{{ url_for('chart_view', ticker='IGV') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">IGV</h6>
+                            <p class="mb-1 text-muted small">iShares Expanded Tech-Software Sector ETF</p>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">차트</span>
+                    </a>
+                    <a href="{{ url_for('chart_view', ticker='SOXL') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">SOXL</h6>
+                            <p class="mb-1 text-muted small">Direxion Daily Semiconductor Bull 3X Shares</p>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">차트</span>
+                    </a>
+                    <a href="{{ url_for('chart_view', ticker='BRKU') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">BRKU</h6>
+                            <p class="mb-1 text-muted small">Direxion Semiconductor Bull 2X Shares</p>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">차트</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card">
             <div class="card-header">
-                <h5 class="mb-0">주식</h5>
+                <h5 class="mb-0"><i class="bi bi-building"></i> 주식</h5>
             </div>
             <div class="card-body">
-                <ul class="list-group">
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        BLK
-                        <span class="text-muted">BlackRock, Inc.</span>
-                    </li>
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        IVZ
-                        <span class="text-muted">Invesco Ltd.</span>
-                    </li>
-                </ul>
+                <div class="list-group">
+                    <a href="{{ url_for('chart_view', ticker='BLK') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">BLK</h6>
+                            <p class="mb-1 text-muted small">BlackRock, Inc.</p>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">차트</span>
+                    </a>
+                    <a href="{{ url_for('chart_view', ticker='IVZ') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">IVZ</h6>
+                            <p class="mb-1 text-muted small">Invesco Ltd.</p>
+                        </div>
+                        <span class="badge bg-primary rounded-pill">차트</span>
+                    </a>
+                </div>
             </div>
         </div>
     </div>

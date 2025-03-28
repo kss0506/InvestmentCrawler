@@ -5,8 +5,12 @@ import os
 import logging
 from datetime import datetime
 import glob
+import json
 
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+
+# Import stock data module
+from stock_data import get_stock_data, get_stock_info
 
 # Setup Flask app
 app = Flask(__name__)
@@ -166,6 +170,65 @@ def ticker_view(ticker, date_str):
         date_str=date_str,
         format_date=format_date,
         html_content=html_content,
+        ticker_type=ticker_type,
+        ticker_description=ticker_description
+    )
+
+
+@app.route('/api/chart/<ticker>')
+def chart_data(ticker):
+    """
+    API endpoint to get chart data for a ticker
+    
+    Args:
+        ticker (str): Ticker symbol
+        
+    Returns:
+        json: Chart data in JSON format
+    """
+    period = request.args.get('period', '1y')
+    data = get_stock_data(ticker, period=period)
+    
+    if data:
+        return jsonify({
+            'success': True,
+            'ticker': ticker,
+            'data': data
+        })
+    else:
+        return jsonify({
+            'success': False,
+            'ticker': ticker,
+            'error': f"Failed to get data for {ticker}"
+        }), 404
+
+
+@app.route('/chart/<ticker>')
+def chart_view(ticker):
+    """
+    View chart for a specific ticker
+    
+    Args:
+        ticker (str): Ticker symbol
+        
+    Returns:
+        html: Chart page
+    """
+    period = request.args.get('period', '1y')
+    
+    # Determine ticker type (ETF or Stock)
+    ticker_type = None
+    ticker_description = None
+    for t_type, tickers in TICKERS.items():
+        if ticker in tickers:
+            ticker_type = t_type
+            ticker_description = tickers[ticker]
+            break
+    
+    return render_template(
+        'chart.html',
+        ticker=ticker,
+        period=period,
         ticker_type=ticker_type,
         ticker_description=ticker_description
     )
