@@ -8,6 +8,9 @@ TICKERS = ["IGV", "SOXL", "BRKU", "BLK", "IVZ"]
 # Test ticker subset (only stable ones)
 TEST_TICKERS = ["BLK"]
 
+# Telegram 전송 설정
+SEND_TO_TELEGRAM = True  # 텔레그램으로 결과 전송 여부
+
 # Schedule settings (24-hour format)
 SCHEDULE_HOUR = 9
 SCHEDULE_MINUTE = 0

@@ -33,22 +33,42 @@ class ETFScraper:
         Setup Selenium WebDriver with Chrome options
         """
         options = Options()
-        # Use default binary location, let selenium find it
-        options.add_argument("--headless")
+        # Setup Chrome options for Replit environment
+        options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1920,1080")
         options.add_argument("--lang=ko-KR")
         options.add_argument(f"user-agent={BROWSER_USER_AGENT}")
         
-        # Use binary_path from chromedriver_py
-        service = Service(executable_path=binary_path)
+        # 크롬 바이너리 경로 설정 (정확한 경로 사용)
+        options.binary_location = "/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium-browser"
+        logger.info(f"Using Chrome binary at: {options.binary_location}")
+                
+        # 크롬드라이버 경로 (정확한 경로 사용)
+        chromedriver_paths = [
+            "/nix/store/3qnxr5x6gw3k9a9i7d0akz0m6bksbwff-chromedriver-125.0.6422.141/bin/chromedriver",
+            binary_path  # From chromedriver_py
+        ]
         
-        try:
-            self.driver = webdriver.Chrome(service=service, options=options)
-            logger.info("WebDriver initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize WebDriver: {e}")
-            raise
+        # Try each possible driver path
+        for driver_path in chromedriver_paths:
+            try:
+                if not os.path.exists(driver_path):
+                    logger.warning(f"Chromedriver path does not exist: {driver_path}")
+                    continue
+                    
+                logger.info(f"Trying chromedriver at: {driver_path}")
+                service = Service(executable_path=driver_path)
+                self.driver = webdriver.Chrome(options=options, service=service)
+                logger.info(f"WebDriver initialized successfully with driver at: {driver_path}")
+                return
+            except Exception as e:
+                logger.error(f"Failed to initialize WebDriver with path {driver_path}: {e}")
+        
+        # If we get here, all paths failed
+        raise Exception("Failed to initialize WebDriver with any available chromedriver path")
     
     async def get_zum_briefing(self, ticker):
         """

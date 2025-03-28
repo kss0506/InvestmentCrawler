@@ -260,7 +260,8 @@ async def test_telegram():
         
     # 간단한 텍스트 메시지로 먼저 테스트
     simple_message = "ETF 데일리 브리핑 봇 테스트 메시지"
-    simple_result = await send_message(simple_message, parse_mode=None)
+    # 텍스트 모드는 parse_mode를 지정하지 않음
+    simple_result = await send_message(simple_message, parse_mode="")
     
     if simple_result:
         logger.info("간단한 텍스트 메시지 전송 성공")
