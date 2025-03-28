@@ -43,9 +43,6 @@ async def send_message(message_text, parse_mode='HTML'):
     Returns:
         bool: 성공 여부
     """
-    # Convert literal \n to actual newlines and format dividers
-    message_text = message_text.replace('\\n', '\n')
-    message_text = message_text.replace('{'-' * 30}', '─' * 30)
     if not BOT_TOKEN or not CHAT_ID:
         logger.error("텔레그램 봇 토큰 또는 채팅 ID가 설정되지 않았습니다.")
         return False
