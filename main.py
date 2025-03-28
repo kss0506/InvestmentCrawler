@@ -42,7 +42,14 @@ async def run_scraper(tickers=None, logger=None):
     if logger is None:
         logger = setup_logging()
 
-    tickers = tickers or TICKERS
+    # 지정된 순서로 티커 정렬
+    default_order = ["IGV", "SOXL", "BLK", "IVZ", "BRKU"]
+    if tickers is None:
+        tickers = default_order
+    else:
+        # 입력된 티커들을 지정된 순서대로 정렬
+        tickers = sorted(tickers, key=lambda x: default_order.index(x) if x in default_order else len(default_order))
+    
     logger.info(f"Running scrape for tickers: {', '.join(tickers)}")
 
     scraper = None
