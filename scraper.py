@@ -284,19 +284,9 @@ class ETFScraper:
                                 
                             # Format stock info
                             if stock_name and price and change:
-                                today = datetime.now().strftime("%Y년 %m월 %d일")
-                                # Format stock header with ticker, price and change percentage
-                                if "(" in stock_name and ")" in stock_name:
-                                    # If stock_name already contains ticker, format as: Name (TICKER) ($price, change%)
-                                    stock_header = f"{stock_name} (${price}, {change})"
-                                else:
-                                    # If no ticker found, just add price and change
-                                    stock_header = f"{stock_name} (${price}, {change})"
-                                # Include the date label
-                                stock_info_item = f"{stock_header}\n{today} 종가"
-                                # Remove any 'C' character from the info before adding
-                                stock_info_item = stock_info_item.replace("C2025년", "2025년")
-                                stocks_info.append(stock_info_item)
+                                # Format stock header with new style
+                                stock_header = f"\n\n━━━ {stock_name} ━━━\n${price} ({change}%)"
+                                stocks_info.append(stock_header)
                             
                             # Get news link if available
                             news_div = item.find("div", class_="styles_article__0oE8K")
