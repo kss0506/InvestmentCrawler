@@ -284,15 +284,9 @@ class ETFScraper:
                                 
                             # Format stock info
                             if stock_name and price and change:
-                                today = datetime.now().strftime("%Y년 %m월 %d일")
-                                if "(" in stock_name and ")" in stock_name:
-                                    # Keep original format: Name (TICKER)$price-change
-                                    stock_info_item = f"{stock_name}${price}-{change.replace('+', '')}"
-                                else:
-                                    # If no ticker found, just add price and change
-                                    stock_info_item = f"{stock_name} (${price}, {change})"
-                                stock_info_item = f"{stock_info_item}{today} 종가"
-                                stocks_info.append(stock_info_item)
+                                # Format stock header with new style
+                                stock_header = f"\n\n━━━ {stock_name} ━━━\n${price} ({change}%)"
+                                stocks_info.append(stock_header)
                             
                             # Get news link if available
                             news_div = item.find("div", class_="styles_article__0oE8K")
