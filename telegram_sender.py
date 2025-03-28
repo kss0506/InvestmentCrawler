@@ -156,18 +156,36 @@ async def send_html_content(ticker, html_content):
         link_elements = target.find_all('a', href=True)
         for a in link_elements:
             href = a['href']
-            # 상대 경로 링크는 건너뛰기
-            if href.startswith('/') or href.startswith('#'):
+            # 상대 경로 링크는 전체 URL로 변환
+            if href.startswith('/'):
+                href = "https://invest.zum.com" + href
+                
+            # 앵커 링크나 자바스크립트 링크는 건너뛰기
+            elif href.startswith('#') or href.startswith('javascript:'):
                 continue
                 
-            # 실제 URL만 포함 (javascript 링크 제외)
+            # 실제 URL만 포함
             if href.startswith('http'):
                 link_text = a.get_text(strip=True) or href
+                # 빈 텍스트면 더 깊이 탐색해서 텍스트 추출 시도
+                if not link_text or len(link_text) < 3:
+                    # 링크 내부 요소들에서 텍스트 더 탐색
+                    inner_text = []
+                    for elem in a.find_all(text=True):
+                        if elem.strip():
+                            inner_text.append(elem.strip())
+                    if inner_text:
+                        link_text = ' '.join(inner_text)
+                
+                # 너무 긴 링크 텍스트는 자르기
+                if len(link_text) > 100:
+                    link_text = link_text[:97] + "..."
+                    
                 # 브리핑 원문 링크 정보 저장
                 links.append(f"<a href='{href}'>{link_text}</a>")
                 
                 # 텍스트에서는 '원문 보기' 표시로 변경
-                a.replace_with("[원문 보기]")
+                a.replace_with(f"[{link_text}]")
         
         # 본문 내용 추출 및 정리
         body_text = target.get_text()
@@ -237,10 +255,17 @@ async def send_html_content(ticker, html_content):
         
         # 링크가 있으면 별도 메시지로 전송
         if links:
-            links_text = f"🔗 <b>{ticker} 원문 링크</b>\n\n"
-            for i, link in enumerate(links[:5]):  # 최대 5개까지만 표시
-                links_text += f"{link}\n"
+            links_text = f"🔗 <b>{ticker} 뉴스 링크</b>\n\n"
+            for i, link in enumerate(links):  # 모든 링크 표시
+                links_text += f"{i+1}. {link}\n\n"
                 
+            # 링크 메시지가 너무 길면 분할
+            if len(links_text) > 4000:
+                # 최대 5개만 포함
+                links_text = f"🔗 <b>{ticker} 뉴스 링크</b> (최신 5개)\n\n"
+                for i, link in enumerate(links[:5]):
+                    links_text += f"{i+1}. {link}\n\n"
+            
             await send_message(links_text)
                 
         return success
@@ -676,10 +701,17 @@ async def send_briefing_as_image(ticker, html_content):
         
         # 링크가 있으면 별도 메시지로 전송
         if links and image_success:
-            links_text = f"🔗 <b>{ticker} 원문 링크</b>\n\n"
-            for i, link in enumerate(links[:5]):  # 최대 5개까지만 표시
-                links_text += f"{link}\n"
+            links_text = f"🔗 <b>{ticker} 뉴스 링크</b>\n\n"
+            for i, link in enumerate(links):  # 모든 링크 표시
+                links_text += f"{i+1}. {link}\n\n"
                 
+            # 링크 메시지가 너무 길면 분할
+            if len(links_text) > 4000:
+                # 최대 5개만 포함
+                links_text = f"🔗 <b>{ticker} 뉴스 링크</b> (최신 5개)\n\n"
+                for i, link in enumerate(links[:5]):
+                    links_text += f"{i+1}. {link}\n\n"
+            
             await send_message(links_text)
             
         return image_success
