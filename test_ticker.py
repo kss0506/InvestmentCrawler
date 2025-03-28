@@ -22,8 +22,12 @@ async def test_ticker(ticker):
         # Format stock headers with clean dividers and simplified price format
         for stock, ticker in [("팔로 알토 네트웍스", "PANW"), ("팔란티어 테크놀로지스", "PLTR"), ("오라클", "ORCL")]:
             pattern = f"{stock} \\({ticker}\\)\\$(\\d+\\.\\d+)-([\\d\\.]+)"
-            replacement = f"\n\n━━━ {stock} ({ticker}) ━━━\n$\\1 (-\\2%)"
+            replacement = f"\n\n{stock} ({ticker})\n{'─' * 40}\n$\\1 (-\\2%)"
             result = re.sub(pattern, replacement, result)
+            
+        # Clean any 'C' prefix from ticker names
+        if result.startswith('C'):
+            result = result[1:]
 
         # Format news sources and times
         for source in ["SOUTH CHINA MORNING POST", "MARKETBEAT", "PR NEWSWIRE"]:

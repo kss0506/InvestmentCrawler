@@ -284,8 +284,12 @@ class ETFScraper:
                                 
                             # Format stock info
                             if stock_name and price and change:
+                                # Clean any 'C' prefix from stock name
+                                if stock_name.startswith('C'):
+                                    stock_name = stock_name[1:]
                                 # Format stock header with new style
-                                stock_header = f"\n\n━━━ {stock_name} ━━━\n${price} ({change}%)"
+                                divider = '─' * 30  # Using a better-looking divider
+                                stock_header = f"{stock_name}\n{divider}\n${price} ({change}%)\n"
                                 stocks_info.append(stock_header)
                             
                             # Get news link if available
