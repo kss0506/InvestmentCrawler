@@ -377,9 +377,13 @@ def create_stock_chart(ticker, data):
         ma200 = data.get('ma200', [])
         ma200_plus10 = data.get('ma200_plus10', [])
         
-        # 차트 크기 설정
-        plt.figure(figsize=(10, 6))
-        plt.style.use('dark_background')  # Dark mode theme
+        # Set figure and background
+        plt.figure(figsize=(10, 6), facecolor='black')
+        plt.style.use('dark_background')
+        
+        # Set axes background
+        ax = plt.gca()
+        ax.set_facecolor('black')
         
         # Price graph
         plt.plot(dates, prices, color='#00BFFF', linewidth=2, label='Price')
