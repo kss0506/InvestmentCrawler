@@ -10,7 +10,7 @@ from datetime import datetime
 from config import LOG_LEVEL, LOG_FORMAT, LOG_FILE, TICKERS, TEST_TICKERS
 from scheduler import ETFScraperScheduler
 from scraper import ETFScraper
-from telegram_sender import send_message, send_html_content, send_chart_analysis
+from telegram_sender import send_message, send_html_content, send_chart_analysis, send_briefing_as_image
 from stock_data import get_stock_data
 
 # Import Flask app for Gunicorn
@@ -83,7 +83,9 @@ async def run_once(tickers=None, logger=None):
                     
                     # HTML 콘텐츠 가져오기 (스크래핑된 결과)
                     html_content = result.replace(f"{ticker}:", "")
-                    await send_html_content(ticker, html_content)
+                    
+                    # 브리핑 내용을 이미지로 변환하여 전송
+                    await send_briefing_as_image(ticker, html_content)
                     
                     # 차트 분석 데이터 가져오기 및 전송
                     try:

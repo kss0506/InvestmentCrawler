@@ -3,7 +3,7 @@ Configuration settings for ETF data scraper
 """
 
 # List of tickers to track
-TICKERS = ["IGV", "SOXL", "BRKU", "BLK", "IVZ"]
+TICKERS = ["IGV", "SOXL", "BLK", "IVZ", "BRKU"]
 
 # Test ticker subset (only stable ones)
 TEST_TICKERS = ["BLK"]

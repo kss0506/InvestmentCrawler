@@ -12,6 +12,9 @@ import matplotlib.dates as mdates
 import numpy as np
 from datetime import datetime
 from matplotlib.dates import DateFormatter, MonthLocator
+from PIL import Image, ImageDraw, ImageFont
+import textwrap
+import html
 
 # 로깅 설정
 logging.basicConfig(
@@ -415,6 +418,185 @@ async def test_telegram():
     else:
         logger.error("간단한 텍스트 메시지 전송 실패")
         return False
+
+
+def create_text_image(ticker, content):
+    """
+    텍스트 내용을 이미지로 변환
+    
+    Args:
+        ticker (str): 티커 심볼
+        content (str): 표시할 텍스트 내용
+        
+    Returns:
+        bytes: 이미지 바이트 데이터
+    """
+    try:
+        # HTML 태그 처리
+        cleaned_content = html.unescape(content)
+        cleaned_content = re.sub(r'<br\s*/?>', '\n', cleaned_content, flags=re.IGNORECASE)
+        cleaned_content = re.sub(r'<p>', '\n', cleaned_content, flags=re.IGNORECASE)
+        cleaned_content = re.sub(r'</p>', '\n', cleaned_content, flags=re.IGNORECASE)
+        
+        # 남은 HTML 태그 제거
+        cleaned_content = re.sub(r'<[^>]*>', '', cleaned_content)
+        
+        # 링크 추출 (나중에 별도 전송용)
+        links = re.findall(r'https?://[^\s]+', cleaned_content)
+        
+        # 링크를 텍스트에서 제거하고 "원문 링크"로 대체
+        if links:
+            for link in links:
+                cleaned_content = cleaned_content.replace(link, "[원문 링크]")
+        
+        # 여러 줄 개행 정리
+        cleaned_content = re.sub(r'\n\s*\n', '\n\n', cleaned_content)
+        
+        # 이미지 설정
+        width = 1000
+        # 텍스트 길이에 따라 높이 조정
+        line_count = len(cleaned_content.split('\n'))
+        height = max(500, 100 + line_count * 25)  # 기본 높이 500px, 줄 수에 따라 증가
+        
+        # 배경색 - 더 부드러운 어두운 테마
+        background_color = (30, 30, 45)  # 어두운 남색
+        text_color = (240, 240, 245)  # 조금 더 부드러운 흰색
+        header_color = (130, 180, 255)  # 밝은 파란색
+        
+        # 이미지 생성
+        image = Image.new('RGB', (width, height), color=background_color)
+        draw = ImageDraw.Draw(image)
+        
+        # 글꼴 설정 (맷플롯립 설치 경로에서 DejaVu 글꼴 찾기)
+        try:
+            import matplotlib
+            mpl_font_dir = matplotlib.get_data_path() + '/fonts/ttf/'
+            
+            # 헤더용 대형 글꼴
+            header_font_path = mpl_font_dir + 'DejaVuSans-Bold.ttf'
+            if os.path.exists(header_font_path):
+                header_font = ImageFont.truetype(header_font_path, 32)
+            else:
+                # 다른 볼드 글꼴 시도
+                for font_name in ['DejaVuSans-Bold.ttf', 'DejaVuSansMono-Bold.ttf', 'DejaVuSerif-Bold.ttf']:
+                    try:
+                        if os.path.exists(mpl_font_dir + font_name):
+                            header_font = ImageFont.truetype(mpl_font_dir + font_name, 32)
+                            break
+                    except:
+                        pass
+                else:
+                    header_font = ImageFont.load_default()
+                    
+            # 본문용 글꼴
+            content_font_path = mpl_font_dir + 'DejaVuSans.ttf'
+            if os.path.exists(content_font_path):
+                content_font = ImageFont.truetype(content_font_path, 24)
+            else:
+                # 다른 일반 글꼴 시도
+                for font_name in ['DejaVuSans.ttf', 'DejaVuSansMono.ttf', 'DejaVuSerif.ttf']:
+                    try:
+                        if os.path.exists(mpl_font_dir + font_name):
+                            content_font = ImageFont.truetype(mpl_font_dir + font_name, 24)
+                            break
+                    except:
+                        pass
+                else:
+                    content_font = ImageFont.load_default()
+        except:
+            # 기본 글꼴 사용
+            logger.warning("글꼴 설정 실패, 기본 글꼴 사용")
+            header_font = ImageFont.load_default()
+            content_font = ImageFont.load_default()
+        
+        # 제목 그리기
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        title = f"{ticker} 데일리 브리핑 ({current_date})"
+        draw.text((30, 30), title, font=header_font, fill=header_color)
+        
+        # 테두리 그리기 (전체 이미지 주변)
+        border_width = 3
+        draw.rectangle([(0, 0), (width-1, height-1)], outline=header_color, width=border_width)
+        
+        # 제목 아래 구분선 그리기
+        draw.line([(30, 80), (width-30, 80)], fill=header_color, width=2)
+        
+        # 본문 내용 그리기 - 텍스트 줄바꿈 처리
+        wrapped_text = ""
+        y_position = 100
+        
+        # 텍스트 래핑
+        for line in cleaned_content.split('\n'):
+            if not line.strip():
+                wrapped_text += '\n'
+                continue
+                
+            # 한 줄이 너무 길면 자동 줄바꿈
+            wrapped_lines = textwrap.wrap(line, width=80)
+            wrapped_text += '\n'.join(wrapped_lines) + '\n'
+        
+        # 텍스트 그리기
+        draw.text((30, y_position), wrapped_text, font=content_font, fill=text_color)
+        
+        # 이미지를 바이트로 변환
+        img_bytes = io.BytesIO()
+        image.save(img_bytes, format='PNG')
+        img_bytes.seek(0)
+        
+        return {
+            'image': img_bytes.getvalue(),
+            'links': links
+        }
+        
+    except Exception as e:
+        logger.error(f"텍스트 이미지 생성 실패: {e}")
+        return None
+
+
+async def send_briefing_as_image(ticker, html_content):
+    """
+    브리핑 내용을 이미지로 변환하여 텔레그램으로 전송
+    
+    Args:
+        ticker (str): 티커 심볼
+        html_content (str): HTML 내용
+        
+    Returns:
+        bool: 성공 여부
+    """
+    try:
+        # 이미지 생성
+        result = create_text_image(ticker, html_content)
+        
+        if not result:
+            logger.error(f"브리핑 이미지 생성 실패: {ticker}")
+            # 일반 텍스트 방식으로 폴백
+            return await send_html_content(ticker, html_content)
+            
+        image_bytes = result['image']
+        links = result.get('links', [])
+        
+        # 이미지 캡션 (현재 날짜 포함)
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        caption = f"{ticker} 데일리 브리핑 ({current_date})"
+        
+        # 이미지 전송
+        image_success = await send_photo(image_bytes, caption=caption)
+        
+        # 링크가 있으면 별도 메시지로 전송
+        if links and image_success:
+            links_text = f"📎 <b>{ticker} 관련 링크</b>\n\n"
+            for i, link in enumerate(links[:5]):  # 최대 5개까지만 표시
+                links_text += f"{i+1}. {link}\n"
+                
+            await send_message(links_text)
+            
+        return image_success
+        
+    except Exception as e:
+        logger.error(f"브리핑 이미지 전송 실패: {e}")
+        # 에러 발생 시 기존 텍스트 방식으로 폴백
+        return await send_html_content(ticker, html_content)
 
 
 # 직접 실행 시 테스트 수행
