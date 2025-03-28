@@ -12,15 +12,17 @@ async def test_ticker(ticker):
 
         # Implement custom formatting here for output
         if "데일리 브리핑2025년" in result:
-            result = result.replace("데일리 브리핑2025년", "데일리 브리핑\n2025년")
+            # Remove extra "데일리 브리핑" in the content
+            result = result.replace("데일리 브리핑2025년", "2025년")
+            result = result.replace("데일리 브리핑\n", "")
 
         if "C2025년" in result:
             result = result.replace("C2025년", "\n\n2025년")
 
         # Format stock headers with clean dividers and simplified price format
         for stock, ticker in [("팔로 알토 네트웍스", "PANW"), ("팔란티어 테크놀로지스", "PLTR"), ("오라클", "ORCL")]:
-            pattern = f"{stock} \\({ticker}\\) \\$(\\d+\\.\\d+) \\([+-]\\d+\\.\\d+%\\)"
-            replacement = f"\n\n━━━ {stock} ({ticker}) ━━━\n$\\1 (\\2)"
+            pattern = f"{stock} \\({ticker}\\)\\$(\\d+\\.\\d+)-([\\d\\.]+)"
+            replacement = f"\n\n━━━ {stock} ({ticker}) ━━━\n$\\1 (-\\2%)"
             result = re.sub(pattern, replacement, result)
 
         # Format news sources and times
