@@ -1,0 +1,27 @@
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+*.log
+
+# Environment
+.env
+.venv
+env/
+venv/
+
+# Replit specific
+.config/
+.replit
+replit.nix
+.breakpoints
+.upm/
+.cache/
+
+# Project specific
+html_outputs/
+uv.lock
+attached_assets/
