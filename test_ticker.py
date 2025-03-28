@@ -51,16 +51,13 @@ async def test_ticker(ticker):
                     news_content = result[news_start:].strip()
                     result = main_content + "\n\n관련 뉴스:\n\n" + news_content
 
-            # Add -- before each stock/component name for better readability
-            components = [
-                "팔로 알토 네트웍스", "팔란티어 테크놀로지스", "오라클",
-                "브로드컴", "AMD", "타이완 반도체",
-                "블랙록", "인베스코"
-            ]
+            # Remove any 'C' character before dates
+            result = result.replace("C2025년", "2025년")
 
-            for component in components:
-                if component in result:
-                    result = result.replace(component, f"\n--{component}")
+            # Format news headlines better
+            result = result.replace("팔로 알토 네트웍스", "\n--팔로 알토 네트웍스")
+            result = result.replace("팔란티어 테크놀로지스", "\n--팔란티어 테크놀로지스")  
+            result = result.replace("오라클", "\n--오라클")
 
             # Add spaces between ticker symbol, price, and change percentage
             result = result.replace(" (PANW)$", " (PANW) $")
