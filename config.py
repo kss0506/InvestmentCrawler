@@ -5,6 +5,9 @@ Configuration settings for ETF data scraper
 # List of tickers to track
 TICKERS = ["IGV", "SOXL", "BRKU", "BLK", "IVZ"]
 
+# Test ticker subset (only stable ones)
+TEST_TICKERS = ["BLK"]
+
 # Schedule settings (24-hour format)
 SCHEDULE_HOUR = 9
 SCHEDULE_MINUTE = 0

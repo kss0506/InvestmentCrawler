@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+
+{% block title %}ETF 데일리 브리핑 - 홈{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mb-4">ETF 데일리 브리핑</h1>
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">사용 가능한 날짜</h5>
+            </div>
+            <div class="card-body">
+                {% if dates %}
+                <div class="list-group">
+                    {% for date in dates %}
+                    <a href="{{ url_for('date_view', date_str=date) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        {{ format_date(date) }}
+                        <span class="badge bg-primary rounded-pill">브리핑</span>
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    현재 사용 가능한 데이터가 없습니다. 스크래퍼가 실행되기를 기다리고 있습니다.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">ETF</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        IGV
+                        <span class="text-muted">iShares Expanded Tech-Software Sector ETF</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        SOXL
+                        <span class="text-muted">Direxion Daily Semiconductor Bull 3X Shares</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        BRKU
+                        <span class="text-muted">Direxion Semiconductor Bull 2X Shares</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">주식</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        BLK
+                        <span class="text-muted">BlackRock, Inc.</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        IVZ
+                        <span class="text-muted">Invesco Ltd.</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

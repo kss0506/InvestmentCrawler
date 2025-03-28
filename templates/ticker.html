@@ -1,0 +1,69 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ ticker }} 데일리 브리핑 - {{ format_date(date_str) }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">홈</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('date_view', date_str=date_str) }}">{{ format_date(date_str) }}</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ ticker }}</li>
+            </ol>
+        </nav>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>{{ ticker }} 데일리 브리핑</h1>
+            <span class="badge {% if ticker_type == 'ETFs' %}bg-info{% else %}bg-success{% endif %}">{{ ticker_type }}</span>
+        </div>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">{{ ticker_description }}</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">{{ format_date(date_str) }}의 데일리 브리핑</p>
+                
+                <div class="alert alert-info">
+                    <strong>참고:</strong> 아래 내용은 투자 조언을 위한 것이 아닙니다. 항상 자신만의 리서치를 수행하세요.
+                </div>
+                
+                <div class="mt-4 border p-3 rounded">
+                    <h6 class="text-center mb-3">원본 HTML 컨텐츠</h6>
+                    <iframe id="html-content" srcdoc="{{ html_content }}" style="width: 100%; height: 600px; border: none;"></iframe>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-center">
+            <a href="{{ url_for('date_view', date_str=date_str) }}" class="btn btn-secondary">날짜 보기로 돌아가기</a>
+            <a href="{{ url_for('index') }}" class="btn btn-primary">홈으로 돌아가기</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const iframe = document.getElementById('html-content');
+        iframe.onload = function() {
+            try {
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const styles = document.createElement('link');
+                styles.rel = 'stylesheet';
+                styles.href = 'https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css';
+                iframeDoc.head.appendChild(styles);
+                
+                const styleElement = document.createElement('style');
+                styleElement.textContent = `
+                    body { padding: 20px; }
+                    .daily-briefing { white-space: pre-wrap; }
+                `;
+                iframeDoc.head.appendChild(styleElement);
+            } catch (e) {
+                console.error("Could not access iframe document", e);
+            }
+        };
+    });
+</script>
+{% endblock %}

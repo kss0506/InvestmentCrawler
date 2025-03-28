@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+
+{% block title %}ETF 데일리 브리핑 - {{ format_date(date_str) }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('index') }}">홈</a></li>
+                <li class="breadcrumb-item active" aria-current="page">{{ format_date(date_str) }}</li>
+            </ol>
+        </nav>
+        
+        <h1 class="mb-4">{{ format_date(date_str) }} 데일리 브리핑</h1>
+        
+        {% if available_tickers['ETFs'] or available_tickers['Stocks'] %}
+            {% if available_tickers['ETFs'] %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">ETF</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for ticker in available_tickers['ETFs'] %}
+                        <a href="{{ url_for('ticker_view', ticker=ticker, date_str=date_str) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            {{ ticker }}
+                            <span class="text-muted">{{ ticker_descriptions['ETFs'][ticker] }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if available_tickers['Stocks'] %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">주식</h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group">
+                        {% for ticker in available_tickers['Stocks'] %}
+                        <a href="{{ url_for('ticker_view', ticker=ticker, date_str=date_str) }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            {{ ticker }}
+                            <span class="text-muted">{{ ticker_descriptions['Stocks'][ticker] }}</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-info">
+                {{ format_date(date_str) }}에 사용 가능한 데이터가 없습니다.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -35,17 +35,43 @@ class ETFScraperScheduler:
         
         try:
             self.scraper = ETFScraper()
-            results = await self.scraper.scrape_all_tickers(self.tickers)
             
-            # Print all results
-            print("\n" + "="*50)
-            print(f"ETF DAILY BRIEFINGS - {datetime.now().strftime('%Y-%m-%d')}")
-            print("="*50)
-            for result in results:
-                print(f"\n{result}")
-                print("-"*50)
+            try:
+                # Use a timeout for the entire scraping operation (2 minutes)
+                results = await asyncio.wait_for(
+                    self.scraper.scrape_all_tickers(self.tickers),
+                    timeout=120
+                )
                 
-            logger.info(f"Completed scraping task for {len(self.tickers)} tickers")
+                # Print all results
+                print("\n" + "="*50)
+                print(f"ETF DAILY BRIEFINGS - {datetime.now().strftime('%Y-%m-%d')}")
+                print("="*50)
+                for result in results:
+                    print(f"\n{result}")
+                    print("-"*50)
+                    
+                logger.info(f"Completed scraping task for {len(self.tickers)} tickers")
+                
+            except asyncio.TimeoutError:
+                logger.error("Overall scraping operation timed out in scheduled run")
+                # Generate fallback results for all tickers
+                results = []
+                for ticker in self.tickers:
+                    is_etf = ticker in ['IGV', 'SOXL', 'BRKU']
+                    ticker_type = 'etf' if is_etf else 'stock'
+                    fallback = f"{ticker}:\n데일리 브리핑\n\n시간 초과로 인해 브리핑을 가져오지 못했습니다. 수동으로 확인해주세요: https://invest.zum.com/{ticker_type}/{ticker}/"
+                    results.append(fallback)
+                    
+                # Print fallback results
+                print("\n" + "="*50)
+                print(f"ETF DAILY BRIEFINGS - FALLBACK RESULTS - {datetime.now().strftime('%Y-%m-%d')}")
+                print("="*50)
+                for result in results:
+                    print(f"\n{result}")
+                    print("-"*50)
+                
+                logger.info("Printed fallback results due to timeout")
             
         except Exception as e:
             logger.error(f"Error running scheduled task: {e}")
