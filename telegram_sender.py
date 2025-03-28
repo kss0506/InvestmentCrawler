@@ -127,39 +127,126 @@ async def send_html_content(ticker, html_content):
         bool: 성공 여부
     """
     try:
-        # 메시지 제목 생성
-        current_date = datetime.now().strftime("%Y년 %m월 %d일")
-        message_title = f"📊 <b>{ticker} 데일리 브리핑</b> ({current_date})\n\n"
-        
-        # HTML에서 필요한 내용 추출 (이 부분은 HTML 구조에 따라 수정 필요)
-        # 여기서는 간단한 예시만 포함
-        message_body = html_content.replace("<br>", "\n")
-        message_body = message_body.replace("<p>", "").replace("</p>", "\n")
-        message_body = message_body.replace("<b>", "<b>").replace("</b>", "</b>")
-        message_body = message_body.replace("<strong>", "<b>").replace("</strong>", "</b>")
-        
-        # HTML 태그 제거 (나머지 모든 태그)
+        # BeautifulSoup으로 HTML 처리
+        from bs4 import BeautifulSoup
         import re
-        message_body = re.sub(r'<[^>]*>', '', message_body)
+        import html as html_module
         
-        # 메시지 조합
-        full_message = message_title + message_body
+        soup = BeautifulSoup(html_content, 'html.parser')
         
-        # 긴 메시지 처리 (텔레그램 제한: 4096자)
-        if len(full_message) > 4000:
-            chunks = [full_message[i:i+4000] for i in range(0, len(full_message), 4000)]
-            success = True
-            for i, chunk in enumerate(chunks):
-                # 첫 번째 청크에는 제목 포함, 나머지는 '계속' 표시
-                if i > 0:
-                    chunk = f"(계속) {chunk}"
-                chunk_success = await send_message(chunk)
-                success = success and chunk_success
-            return success
-        else:
-            return await send_message(full_message)
+        # 브리핑 제목 구성 (티커 + 날짜)
+        current_date = datetime.now().strftime("%Y년 %m월 %d일")
+        header = f"📈 <b>{ticker} 데일리 브리핑</b> ({current_date})\n\n"
+        
+        # 링크 추출
+        links = []
+        content_section = None
+        
+        # 주요 콘텐츠 영역 찾기
+        for class_name in ['etf-content', 'etf-briefing', 'daily-briefing', 'article', 'content']:
+            found = soup.find(class_=lambda x: x and isinstance(x, str) and class_name in x.lower())
+            if found:
+                content_section = found
+                break
+                
+        # 콘텐츠 영역이 없으면 전체 문서 사용
+        target = content_section if content_section else soup
+        
+        # 링크 추출 및 처리
+        link_elements = target.find_all('a', href=True)
+        for a in link_elements:
+            href = a['href']
+            # 상대 경로 링크는 건너뛰기
+            if href.startswith('/') or href.startswith('#'):
+                continue
+                
+            # 실제 URL만 포함 (javascript 링크 제외)
+            if href.startswith('http'):
+                link_text = a.get_text(strip=True) or href
+                # 브리핑 원문 링크 정보 저장
+                links.append(f"<a href='{href}'>{link_text}</a>")
+                
+                # 텍스트에서는 '원문 보기' 표시로 변경
+                a.replace_with("[원문 보기]")
+        
+        # 본문 내용 추출 및 정리
+        body_text = target.get_text()
+        
+        # HTML 엔티티 처리
+        body_text = html_module.unescape(body_text)
+        
+        # 불필요한 공백/개행 제거
+        body_text = re.sub(r'\n\s*\n', '\n\n', body_text)  # 여러 줄 공백 정리
+        body_text = re.sub(r'\s{2,}', ' ', body_text)      # 연속된 공백 정리
+        
+        # CSS/스타일 관련 텍스트 제거
+        body_text = re.sub(r'[.#]?[a-zA-Z0-9_-]+\s*\{[^}]*\}', '', body_text)
+        body_text = re.sub(r'style=.*?["\']', '', body_text)
+        body_text = re.sub(r'@media.*?\{.*?\}', '', body_text, flags=re.DOTALL)
+        
+        # 내용 정리 - 줄 단위로 처리
+        clean_lines = []
+        for line in body_text.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+                
+            # CSS 선택자나 웹 코드로 보이는 줄 제거
+            if re.match(r'^[.#]?[a-zA-Z0-9_-]+\s*\{', line) or ('{' in line and '}' in line):
+                continue
+                
+            # 중요한 정보가 있는 줄만 유지
+            if len(line) > 3 and not line.startswith(('.', '#', '{')):
+                clean_lines.append(line)
+                
+        # 정리된 텍스트 구성
+        body_text = '\n'.join(clean_lines)
+        
+        # 전체 텍스트 만들기
+        full_message = header + body_text
+        
+        # 너무 길면 여러 메시지로 분할 (텔레그램 메시지 최대 길이: 약 4096자)
+        MAX_LENGTH = 3000  # 여유있게 설정
+        
+        # 메시지 청크로 분할
+        messages = []
+        remaining_text = full_message
+        
+        # 첫 번째 메시지에는 헤더 포함
+        first_chunk = remaining_text[:MAX_LENGTH]
+        messages.append(first_chunk)
+        remaining_text = remaining_text[MAX_LENGTH:]
+        
+        # 나머지 텍스트가 있으면 계속 분할
+        while remaining_text:
+            chunk = remaining_text[:MAX_LENGTH]
+            remaining_text = remaining_text[MAX_LENGTH:]
+            messages.append(chunk)
+            
+        # 메시지 전송
+        success = True
+        for i, message in enumerate(messages):
+            # 첫 번째 메시지가 아니라면, 계속 표시
+            if i > 0:
+                message = "(계속) " + message
+                
+            result = await send_message(message)
+            if not result:
+                success = False
+                logger.error(f"메시지 {i+1}/{len(messages)} 전송 실패")
+        
+        # 링크가 있으면 별도 메시지로 전송
+        if links:
+            links_text = f"🔗 <b>{ticker} 원문 링크</b>\n\n"
+            for i, link in enumerate(links[:5]):  # 최대 5개까지만 표시
+                links_text += f"{link}\n"
+                
+            await send_message(links_text)
+                
+        return success
+        
     except Exception as e:
-        logger.error(f"메시지 변환 및 전송 실패: {e}")
+        logger.error(f"HTML 내용 전송 실패: {e}")
         return False
 
 
