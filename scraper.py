@@ -49,15 +49,20 @@ class ETFScraper:
     
     async def get_zum_briefing(self, ticker):
         """
-        Retrieve daily briefing for a specific ETF ticker
+        Retrieve daily briefing for a specific ticker
         
         Args:
-            ticker (str): ETF ticker symbol
+            ticker (str): Ticker symbol (ETF or Stock)
             
         Returns:
             str: Formatted briefing text
         """
-        url = f"https://invest.zum.com/etf/{ticker}/"
+        # Determine if it's a stock ticker
+        if ticker in ["BLK", "IVZ"]:
+            url = f"https://invest.zum.com/stock/{ticker}/"
+        else:
+            url = f"https://invest.zum.com/etf/{ticker}/"
+            
         logger.info(f"Scraping data for {ticker} from {url}")
         
         try:
@@ -167,11 +172,27 @@ class ETFScraper:
                             if news_div:
                                 news_title = news_div.find("div", class_="styles_title__ummjn")
                                 news_source = news_div.find("span", class_="styles_info__OeSIl")
+                                news_link = None
+                                
+                                # Try to find link in parent elements
+                                parent_with_link = news_div.find_parent("a")
+                                if parent_with_link and parent_with_link.get("href"):
+                                    news_link = parent_with_link.get("href")
+                                else:
+                                    # Or try to find link element inside
+                                    link_element = news_div.find("a")
+                                    if link_element and link_element.get("href"):
+                                        news_link = link_element.get("href")
                                 
                                 if news_title and news_source:
                                     news_title_text = news_title.get_text(strip=True)
                                     news_source_text = news_source.get_text(strip=True)
-                                    news_items.append(f"[{news_title_text}] - {news_source_text}")
+                                    news_item = f"[{news_title_text}] - {news_source_text}"
+                                    if news_link:
+                                        if not news_link.startswith("http"):
+                                            news_link = f"https://invest.zum.com{news_link}"
+                                        news_item += f"\n    링크: {news_link}"
+                                    news_items.append(news_item)
                                     
                         except Exception as e:
                             logger.warning(f"Error extracting stock info: {e}")
@@ -179,12 +200,23 @@ class ETFScraper:
                     
                     # Combine ETF briefing with stock info
                     if briefing_text:
-                        briefing = briefing_text
+                        # Add line breaks for better readability in the main text
+                        briefing_lines = []
+                        for line in briefing_text.split(". "):
+                            if line:
+                                if not line.endswith("."):
+                                    line += "."
+                                briefing_lines.append(line)
+                        
+                        briefing = "\n".join(briefing_lines)
+                        
+                        # Add empty line before stock information
                         if stocks_info:
                             briefing += "\n\n주요 구성종목:"
                             for idx, stock in enumerate(stocks_info, 1):
                                 briefing += f"\n{idx}. {stock}"
                         
+                        # Add empty line before news items
                         if news_items:
                             briefing += "\n\n관련 뉴스:"
                             for idx, news in enumerate(news_items, 1):

@@ -2,8 +2,8 @@
 Configuration settings for ETF data scraper
 """
 
-# List of ETF tickers to track
-TICKERS = ["IYY", "SPY", "QQQ", "VTI", "VOO", "IGV"]
+# List of tickers to track
+TICKERS = ["IGV", "SOXL", "BRKU", "BLK", "IVZ"]
 
 # Schedule settings (24-hour format)
 SCHEDULE_HOUR = 9
