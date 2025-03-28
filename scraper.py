@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import re
+import json
 from datetime import datetime, timedelta
 
 from selenium import webdriver
@@ -13,6 +14,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from bs4 import BeautifulSoup
 from chromedriver_py import binary_path  # Use chromedriver-py for binary path
 
@@ -198,6 +200,9 @@ class ETFScraper:
                                 briefing_parts = briefing_text.split(marker)
                                 briefing_text = briefing_parts[0].strip()
                                 break
+                    
+                    # Extract news links directly from browser using JavaScript
+                    news_links = self.extract_news_links(ticker)
                     
                     # Check if there are stock items to process
                     news_items = []
@@ -404,6 +409,20 @@ class ETFScraper:
                             briefing += "\n\n관련 뉴스:"
                             for news in news_items:
                                 briefing += f"\n\n{news}"
+                                
+                        # Add extracted links from JavaScript
+                        if news_links:
+                            # Add header for links if not already added
+                            if "관련 뉴스:" not in briefing:
+                                briefing += "\n\n관련 뉴스 링크:"
+                            elif not news_items:  # if "관련 뉴스:" already exists but no news items
+                                briefing += "\n\n관련 뉴스 링크:"
+                            else:  # if news items exist, add subheader
+                                briefing += "\n\n뉴스 링크:"
+                                
+                            # Add up to 3 links to avoid cluttering
+                            for i, link in enumerate(news_links[:3]):
+                                briefing += f"\n{link}"
                     else:
                         briefing = None
                 else:
@@ -477,6 +496,108 @@ class ETFScraper:
                 results.append(f"{ticker}: 오류 발생 - {str(e)}")
                 
         return results
+    
+    def extract_news_links(self, ticker, timeout=10):
+        """
+        Extract news article links using JavaScript execution
+        
+        Args:
+            ticker (str): Ticker symbol
+            timeout (int): Timeout in seconds
+            
+        Returns:
+            list: List of news links with docid and other parameters
+        """
+        try:
+            # Execute JavaScript to find news links
+            script = """
+            let newsLinks = [];
+            // Find all article elements that might contain news links
+            const articles = document.querySelectorAll('[class*="article"], [class*="news"], [aria-label="news"], a[href*="docid"]');
+            
+            articles.forEach(element => {
+                // Check if element is an <a> tag with href
+                if (element.tagName === 'A' && element.href && element.href.includes('docid')) {
+                    newsLinks.push(element.href);
+                } else {
+                    // Check for nested <a> tags
+                    const links = element.querySelectorAll('a[href*="docid"]');
+                    links.forEach(link => {
+                        if (link.href) {
+                            newsLinks.push(link.href);
+                        }
+                    });
+                }
+            });
+            
+            // Also check for any <a> tags with docid parameter regardless of parent
+            const allLinks = document.querySelectorAll('a[href*="docid"]');
+            allLinks.forEach(link => {
+                if (link.href) {
+                    newsLinks.push(link.href);
+                }
+            });
+            
+            // Remove duplicates
+            return [...new Set(newsLinks)];
+            """
+            
+            # Execute the script and get the results
+            news_links = self.driver.execute_script(script)
+            
+            if not news_links:
+                logger.warning(f"No news links found for {ticker} using JavaScript")
+                
+                # Fallback method: look for onclick attributes that might contain URLs
+                fallback_script = """
+                let fallbackLinks = [];
+                const clickElements = document.querySelectorAll('[onclick*="docid"]');
+                
+                clickElements.forEach(element => {
+                    const onclickAttr = element.getAttribute('onclick');
+                    if (onclickAttr) {
+                        // Try to extract URL from onclick attribute
+                        const match = onclickAttr.match(/window.location.href=['"]([^'"]+)['"]/);
+                        if (match && match[1]) {
+                            fallbackLinks.push(match[1]);
+                        }
+                    }
+                });
+                
+                return fallbackLinks;
+                """
+                fallback_links = self.driver.execute_script(fallback_script)
+                news_links.extend(fallback_links)
+            
+            # Normalize links to ensure they're complete URLs
+            normalized_links = []
+            base_url = f"https://invest.zum.com/{'etf' if ticker not in ['BLK', 'IVZ'] else 'stock'}/{ticker}/"
+            
+            for link in news_links:
+                # If link doesn't have base URL, add it
+                if not link.startswith('http'):
+                    if link.startswith('/'):
+                        link = f"https://invest.zum.com{link}"
+                    else:
+                        link = f"{base_url}{link}"
+                
+                # Ensure it has proper docid format
+                if 'docid=' not in link and 'doctype=news' not in link:
+                    # Try to add parameters if missing
+                    if '?' not in link:
+                        link = f"{link}?doctype=news&docid=5384592&isdomestic=false&istrending=false"
+                
+                normalized_links.append(link)
+            
+            # Remove duplicates again after normalization
+            normalized_links = list(set(normalized_links))
+            
+            logger.info(f"Found {len(normalized_links)} news links for {ticker}")
+            return normalized_links
+            
+        except Exception as e:
+            logger.error(f"Error extracting news links for {ticker}: {e}")
+            return []
     
     def close(self):
         """

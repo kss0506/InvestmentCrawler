@@ -164,6 +164,30 @@ async def send_html_content(ticker, html_content):
             elif href.startswith('#') or href.startswith('javascript:'):
                 continue
                 
+            # docid 파라미터가 있는 링크 확인 (뉴스 링크)
+            if 'docid=' in href or 'doctype=news' in href:
+                # 이미 완전한 URL 형태인지 확인
+                if not href.startswith('http'):
+                    # 티커 타입에 따라 URL 경로 다르게 구성
+                    base_url = f"https://invest.zum.com/{'etf' if ticker not in ['BLK', 'IVZ'] else 'stock'}/{ticker}/"
+                    href = f"{base_url}{href}"
+                
+                # 파라미터 확인 및 추가
+                if 'doctype=news' not in href:
+                    if '?' in href:
+                        href += '&doctype=news'
+                    else:
+                        href += '?doctype=news'
+                        
+                if 'docid=' not in href:
+                    href += '&docid=5384592'
+                    
+                if 'isdomestic=' not in href:
+                    href += '&isdomestic=false'
+                    
+                if 'istrending=' not in href:
+                    href += '&istrending=false'
+                
             # 실제 URL만 포함
             if href.startswith('http'):
                 link_text = a.get_text(strip=True) or href
