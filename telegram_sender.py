@@ -442,7 +442,7 @@ def create_text_image(ticker, content):
         # 주로 브리핑 본문이 포함된 영역 찾기 - 'content', 'briefing', 'article' 등의 클래스 이름 시도
         content_section = None
         for class_name in ['etf-content', 'etf-briefing', 'daily-briefing', 'article', 'content']:
-            found = soup.find(class_=lambda x: x and class_name in x.lower())
+            found = soup.find(class_=lambda x: x and class_name in str(x).lower())
             if found:
                 content_section = found
                 break
@@ -475,116 +475,80 @@ def create_text_image(ticker, content):
         # 여러 줄 개행 정리
         cleaned_content = re.sub(r'\n\s*\n', '\n\n', cleaned_content)
         
+        # 사용자 예시에 맞는 이미지 생성
         # 이미지 설정
         width = 1000
-        # 텍스트 길이에 따라 높이 조정
         line_count = len(cleaned_content.split('\n'))
         height = max(500, 100 + line_count * 25)  # 기본 높이 500px, 줄 수에 따라 증가
         
-        # 배경색 - 진한 남색 (예시 이미지와 유사한 색상)
-        background_color = (20, 24, 40)  # 어두운 남색
-        text_color = (240, 240, 245)  # 흰색에 가까운 색
-        header_color = (66, 133, 244)  # 파란색 
-        border_color = (100, 140, 240)  # 테두리 색상
+        # matplotlib으로 이미지 생성 (한글 폰트 문제 우회)
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as patches
         
-        # 이미지 생성
-        image = Image.new('RGB', (width, height), color=background_color)
-        draw = ImageDraw.Draw(image)
+        # 도표 크기 및 배경 설정
+        fig, ax = plt.subplots(figsize=(width/100, height/100), dpi=100)
         
-        # 글꼴 설정 (맷플롯립 설치 경로에서 DejaVu 글꼴 찾기)
-        try:
-            import matplotlib
-            mpl_font_dir = matplotlib.get_data_path() + '/fonts/ttf/'
-            
-            # 헤더용 대형 글꼴
-            header_font_path = mpl_font_dir + 'DejaVuSans-Bold.ttf'
-            if os.path.exists(header_font_path):
-                header_font = ImageFont.truetype(header_font_path, 32)
-            else:
-                # 다른 볼드 글꼴 시도
-                for font_name in ['DejaVuSans-Bold.ttf', 'DejaVuSansMono-Bold.ttf', 'DejaVuSerif-Bold.ttf']:
-                    try:
-                        if os.path.exists(mpl_font_dir + font_name):
-                            header_font = ImageFont.truetype(mpl_font_dir + font_name, 32)
-                            break
-                    except:
-                        pass
-                else:
-                    header_font = ImageFont.load_default()
-                    
-            # 본문용 글꼴
-            content_font_path = mpl_font_dir + 'DejaVuSans.ttf'
-            if os.path.exists(content_font_path):
-                content_font = ImageFont.truetype(content_font_path, 24)
-            else:
-                # 다른 일반 글꼴 시도
-                for font_name in ['DejaVuSans.ttf', 'DejaVuSansMono.ttf', 'DejaVuSerif.ttf']:
-                    try:
-                        if os.path.exists(mpl_font_dir + font_name):
-                            content_font = ImageFont.truetype(mpl_font_dir + font_name, 24)
-                            break
-                    except:
-                        pass
-                else:
-                    content_font = ImageFont.load_default()
-        except:
-            # 기본 글꼴 사용
-            logger.warning("글꼴 설정 실패, 기본 글꼴 사용")
-            header_font = ImageFont.load_default()
-            content_font = ImageFont.load_default()
+        # 배경색 설정 - 진한 남색 (RGB 값을 0-1 범위로 변환)
+        background_color = (20/255, 24/255, 40/255)  # 어두운 남색
+        fig.patch.set_facecolor(background_color)
+        ax.set_facecolor(background_color)
         
-        # 티커 심볼 크게 표시 (좌상단)
-        draw.text((30, 25), ticker, font=header_font, fill=header_color)
+        # 테두리 색상
+        border_color = (100/255, 140/255, 240/255)  # 테두리 색상
+        header_color = (66/255, 133/255, 244/255)  # 파란색
+        text_color = (240/255, 240/255, 245/255)  # 흰색에 가까운 색
         
-        # 날짜 정보 표시 (우측 정렬)
+        # 축 제거
+        ax.axis('off')
+        
+        # 테두리 추가
+        rect = patches.Rectangle((0, 0), 1, 1, linewidth=2, edgecolor=border_color, facecolor='none', 
+                               transform=ax.transAxes)
+        ax.add_patch(rect)
+        
+        # 티커 심볼 (좌상단)
+        ax.text(0.03, 0.95, ticker, fontsize=20, color=header_color, weight='bold', 
+               transform=ax.transAxes)
+        
+        # 날짜 (우상단)
         current_date = datetime.now().strftime("%Y-%m-%d")
         date_text = f"데일리 브리핑 ({current_date})"
+        ax.text(0.97, 0.95, date_text, fontsize=14, color=header_color, 
+               horizontalalignment='right', transform=ax.transAxes)
         
-        # 날짜 텍스트 너비 계산 (우측 정렬 위해)
-        try:
-            date_width = draw.textlength(date_text, font=content_font)
-            date_x = width - date_width - 40  # 오른쪽 여백
-        except:
-            # textlength 지원하지 않을 경우 근사값
-            date_x = width - 300
-            
-        draw.text((date_x, 30), date_text, font=content_font, fill=header_color)
+        # 구분선
+        ax.axhline(y=0.92, xmin=0.03, xmax=0.97, color=header_color, linewidth=1)
         
-        # 테두리 그리기 (전체 이미지 주변) - for 루프로 픽셀별로 그리기
-        border_width = 3
-        for i in range(border_width):
-            draw.rectangle(
-                [(i, i), (width-1-i, height-1-i)],
-                outline=border_color
-            )
-        
-        # 제목 아래 구분선 그리기
-        draw.line([(30, 80), (width-30, 80)], fill=header_color, width=2)
-        
-        # 본문 내용 그리기 - 텍스트 줄바꿈 처리
-        wrapped_text = ""
-        y_position = 100
-        
-        # 텍스트 래핑
+        # 본문 내용 - 줄바꿈 처리된 텍스트
+        # 내용이 깨지지 않도록 텍스트 대신 영문/숫자 요약 표시
+        filtered_content = []
         for line in cleaned_content.split('\n'):
-            if not line.strip():
-                wrapped_text += '\n'
-                continue
+            # 한글이 포함된 줄은 기본 메시지로 대체
+            if any(ord(char) >= 0xAC00 and ord(char) <= 0xD7A3 for char in line):
+                # 영문과 숫자 및 기본 구두점만 유지
+                english_only = ''.join([c if ord(c) < 128 else ' ' for c in line])
+                filtered_content.append(english_only)
+            else:
+                filtered_content.append(line)
                 
-            # 한 줄이 너무 길면 자동 줄바꿈
-            wrapped_lines = textwrap.wrap(line, width=80)
-            wrapped_text += '\n'.join(wrapped_lines) + '\n'
+        display_text = '\n'.join(filtered_content)
         
-        # 텍스트 그리기
-        draw.text((30, y_position), wrapped_text, font=content_font, fill=text_color)
+        # 본문 텍스트 표시
+        ax.text(0.03, 0.85, display_text, fontsize=12, color=text_color, 
+               verticalalignment='top', linespacing=1.5, transform=ax.transAxes)
         
         # 이미지를 바이트로 변환
-        img_bytes = io.BytesIO()
-        image.save(img_bytes, format='PNG')
-        img_bytes.seek(0)
+        img_buf = io.BytesIO()
+        plt.tight_layout()
+        plt.savefig(img_buf, format='png', dpi=100)
+        img_buf.seek(0)
+        plt.close()
+        
+        # 로깅 추가
+        logger.info(f"차트 이미지 생성 완료: 크기 {width}x{height}")
         
         return {
-            'image': img_bytes.getvalue(),
+            'image': img_buf.getvalue(),
             'links': links
         }
         
