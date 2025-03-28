@@ -14,9 +14,14 @@ async def test_ticker(ticker):
         if "데일리 브리핑2025년" in result:
             result = result.replace("데일리 브리핑2025년", "데일리 브리핑\n2025년")
 
-        # Fix "C2025년" formatting issues
         if "C2025년" in result:
             result = result.replace("C2025년", "\n\n2025년")
+
+        # Format stock headers with clean dividers and simplified price format
+        for stock, ticker in [("팔로 알토 네트웍스", "PANW"), ("팔란티어 테크놀로지스", "PLTR"), ("오라클", "ORCL")]:
+            pattern = f"{stock} \\({ticker}\\) \\$(\\d+\\.\\d+) \\([+-]\\d+\\.\\d+%\\)"
+            replacement = f"\n\n━━━ {stock} ({ticker}) ━━━\n$\\1 (\\2)"
+            result = re.sub(pattern, replacement, result)
 
         # Format news sources and times
         for source in ["SOUTH CHINA MORNING POST", "MARKETBEAT", "PR NEWSWIRE"]:
@@ -31,10 +36,6 @@ async def test_ticker(ticker):
         # Special formatting for SOXL ticker
         if "브로드컴 (AVGO)" in result:
             result = result.replace("브로드컴 (AVGO)", "\n\n브로드컴 (AVGO)")
-        if "AMD(어드밴스드 마이크로 디바이시스) (AMD)" in result:
-            result = result.replace("AMD(어드밴스드 마이크로 디바이시스) (AMD)", "\n\nAMD(어드밴스드 마이크로 디바이시스) (AMD)")
-        if "타이완 반도체 매뉴팩처링 ADR (TSM)" in result:
-            result = result.replace("타이완 반도체 매뉴팩처링 ADR (TSM)", "\n\n타이완 반도체 매뉴팩처링 ADR (TSM)")
 
         # Format news sections better
         if "관련 뉴스:" not in result:
@@ -51,12 +52,6 @@ async def test_ticker(ticker):
                     main_content = result[:news_start].strip()
                     news_content = result[news_start:].strip()
                     result = main_content + "\n\n관련 뉴스:\n\n" + news_content
-
-            # Format stock headers with clean dividers and simplified price format
-            for stock, ticker in [("팔로 알토 네트웍스", "PANW"), ("팔란티어 테크놀로지스", "PLTR"), ("오라클", "ORCL")]:
-                pattern = f"{stock} \\({ticker}\\)\\$(\\d+\\.\\d+)([+-]\\d+\\.\\d+)"
-                replacement = f"\n\n━━━ {stock} ({ticker}) ━━━\n${1} ({2}%)"
-                result = re.sub(pattern, replacement, result)
 
             # Add spaces between ticker symbol, price, and change percentage
 
