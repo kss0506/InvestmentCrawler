@@ -45,22 +45,22 @@ def get_stock_data(ticker, period="1y"):
         history['MA200'] = history['Close'].rolling(window=200).mean()
         history['MA200_Plus10'] = history['MA200'] * 1.1
 
-        # Format data for the chart
+        # Format data for the chart - NaN 값을 None으로 변환하여 JSON 직렬화 가능하게 만듦
         dates = history.index.strftime('%Y-%m-%d').tolist()
-        prices = history['Close'].tolist()
-        ma50 = history['MA50'].tolist()
-        ma200 = history['MA200'].tolist()
-        ma200_plus10 = history['MA200_Plus10'].tolist()
+        prices = [float(x) if not pd.isna(x) else None for x in history['Close'].tolist()]
+        ma50 = [float(x) if not pd.isna(x) else None for x in history['MA50'].tolist()]
+        ma200 = [float(x) if not pd.isna(x) else None for x in history['MA200'].tolist()]
+        ma200_plus10 = [float(x) if not pd.isna(x) else None for x in history['MA200_Plus10'].tolist()]
 
-        # Get current values
-        current_price = prices[-1]
-        current_ma50 = ma50[-1]
-        current_ma200 = ma200[-1]
-        current_ma200_plus10 = ma200_plus10[-1]
+        # Get current values - NaN 값 처리
+        current_price = float(prices[-1]) if prices[-1] is not None else None
+        current_ma50 = float(ma50[-1]) if ma50[-1] is not None else None
+        current_ma200 = float(ma200[-1]) if ma200[-1] is not None else None
+        current_ma200_plus10 = float(ma200_plus10[-1]) if ma200_plus10[-1] is not None else None
 
-        # Check if price is above MA200 and MA200+10%
-        is_above_ma200 = current_price > current_ma200 if not pd.isna(current_ma200) else False
-        is_above_ma200_plus10 = current_price > current_ma200_plus10 if not pd.isna(current_ma200_plus10) else False
+        # Check if price is above MA200 and MA200+10% (None 값 처리)
+        is_above_ma200 = current_price > current_ma200 if current_price is not None and current_ma200 is not None else False
+        is_above_ma200_plus10 = current_price > current_ma200_plus10 if current_price is not None and current_ma200_plus10 is not None else False
 
         return {
             'dates': dates,
@@ -69,9 +69,9 @@ def get_stock_data(ticker, period="1y"):
             'ma200': ma200,
             'ma200_plus10': ma200_plus10,
             'current_price': current_price,
-            'current_ma50': current_ma50 if not pd.isna(current_ma50) else None,
-            'current_ma200': current_ma200 if not pd.isna(current_ma200) else None,
-            'current_ma200_plus10': current_ma200_plus10 if not pd.isna(current_ma200_plus10) else None,
+            'current_ma50': current_ma50,  # 이미 None으로 변환됨
+            'current_ma200': current_ma200,  # 이미 None으로 변환됨
+            'current_ma200_plus10': current_ma200_plus10,  # 이미 None으로 변환됨
             'is_above_ma200': is_above_ma200,
             'is_above_ma200_plus10': is_above_ma200_plus10
         }
